@@ -3,9 +3,19 @@ const express = require('express');
 const router = express.Router();
 const Notes = require('../models/Notes');
 
+// Utility function to handle validation errors
+const handleValidationErrors = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+};
+
 // ✅ Create a new note
+ 
 router.post('/', async (req, res) => {
   const { title, description } = req.body;
+   
 
   try {
     const existingNote = await Notes.findOne({ description });

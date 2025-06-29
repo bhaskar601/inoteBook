@@ -1,76 +1,112 @@
-// routes/user.js
 const express = require('express');
+const { body, param, validationResult } = require('express-validator');
 const router = express.Router();
 const User = require('../models/User');
 
-// ✅ Get all users
+// Utility function to handle validation errors
+const handleValidationErrors = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+};
+
+// ✅ Get all users (No validation needed)
 router.get('/', async (req, res) => {
   try {
-    const users = await User.find().select('-password'); // hide password
+    const users = await User.find().select('');
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// ✅ Get user by ID field (your custom id, not MongoDB _id)
-router.get('/:id', async (req, res) => {
-  try {
-    const user = await User.findOne({ id: req.params.id }).select('-password');
-    if (!user) return res.status(404).json({ error: 'User not found' });
+// ✅ Get user by ID
+router.get('/:id', 
+  param('id').isString().withMessage('ID must be a string'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    try {
+      const user = await User.findOne({ id: req.params.id }).select('-password');
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      res.json(user);
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
   }
-});
+);
 
 // ✅ Create new user
-router.post('/', async (req, res) => {
-  const { name, id, password } = req.body;
+router.post('/createuser',
+  [
+    body('name').notEmpty().withMessage('Name is required'),
+    body('id').isAlphanumeric().withMessage('ID must be alphanumeric'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  ],
+  async (req, res) => {
+    if (handleValidationErrors(req, res)) return;
 
-  try {
-    let existing = await User.findOne({ id });
-    if (existing) return res.status(400).json({ error: 'User already exists' });
+    const { name, id, password } = req.body;
 
-    const newUser = new User({ name, id, password });
-    await newUser.save();
+    try {
+      let existing = await User.findOne({ id });
+      if (existing) return res.status(400).json({ error: 'User already exists' });
 
-    res.status(201).json({ message: 'User created successfully' });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+      const newUser = new User({ name, id, password });
+      await newUser.save();
+
+      res.status(201).json({ message: 'User created successfully' });
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
   }
-});
+);
 
 // ✅ Update user
-router.put('/:id', async (req, res) => {
-  const { name, password } = req.body;
+router.put('/:id',
+  [
+    param('id').isString().withMessage('ID must be a string'),
+    body('name').optional().notEmpty().withMessage('Name must not be empty'),
+    body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  ],
+  async (req, res) => {
+    if (handleValidationErrors(req, res)) return;
 
-  try {
-    const user = await User.findOneAndUpdate(
-      { id: req.params.id },
-      { name, password },
-      { new: true }
-    ).select('-password');
+    const { name, password } = req.body;
 
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    try {
+      const user = await User.findOneAndUpdate(
+        { id: req.params.id },
+        { name, password },
+        { new: true }
+      ).select('-password');
 
-    res.json({ message: 'User updated', user });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      res.json({ message: 'User updated', user });
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
   }
-});
+);
 
 // ✅ Delete user
-router.delete('/:id', async (req, res) => {
-  try {
-    const result = await User.findOneAndDelete({ id: req.params.id });
-    if (!result) return res.status(404).json({ error: 'User not found' });
+router.delete('/:id',
+  param('id').isString().withMessage('ID must be a string'),
+  async (req, res) => {
+    if (handleValidationErrors(req, res)) return;
 
-    res.json({ message: 'User deleted' });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    try {
+      const result = await User.findOneAndDelete({ id: req.params.id });
+      if (!result) return res.status(404).json({ error: 'User not found' });
+
+      res.json({ message: 'User deleted' });
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
   }
-});
+);
 
 module.exports = router;
