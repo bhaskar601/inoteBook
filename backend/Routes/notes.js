@@ -1,7 +1,7 @@
 // routes/notes.js
 const express = require('express');
 const router = express.Router();
-const Notes = require('../models/Notes');
+// const Notes = require('../models/Notes');
 
 // Utility function to handle validation errors
 const handleValidationErrors = (req, res) => {

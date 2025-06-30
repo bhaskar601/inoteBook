@@ -1,6 +1,5 @@
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
-const bcrypt = require('bcryptjs');
 const router = express.Router();
 const User = require('../models/User');
 
@@ -8,10 +7,8 @@ const User = require('../models/User');
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400).json({ errors: errors.array() });
-    return true;
+    return res.status(400).json({ errors: errors.array() });
   }
-  return false;
 };
 
 // ✅ Get all users (No validation needed)
@@ -41,7 +38,7 @@ router.get('/:id',
   }
 );
 
-// ✅ Create new user (with password hashing)
+// ✅ Create new user
 router.post('/createuser',
   [
     body('name').notEmpty().withMessage('Name is required'),
@@ -53,35 +50,21 @@ router.post('/createuser',
 
     const { name, id, password } = req.body;
 
-   try {
-  // Check if all required fields are actually present
-  if (!name || !id || !password) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+    try {
+      let existing = await User.findOne({ id });
+      if (existing) return res.status(400).json({ error: 'User already exists' });
 
-  // Check if user already exists
-  const existing = await User.findOne({ id });
-  if (existing) {
-    return res.status(400).json({ error: 'User already exists' });
-  }
+      const newUser = new User({ name, id, password });
+      await newUser.save();
 
-  // 🔒 Hash the password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // Create and save the user
-  const newUser = new User({ name, id, password: hashedPassword });
-  await newUser.save();
-
-  res.status(201).json({ message: 'User created successfully' });
-
-} catch (err) {
+      res.status(201).json({ message: 'User created successfully' });
+    } catch (err) {
       res.status(500).json({ error: 'Server error' });
     }
   }
 );
 
-// ✅ Update user (with password hashing if password is provided)
+// ✅ Update user
 router.put('/:id',
   [
     param('id').isString().withMessage('ID must be a string'),
@@ -91,19 +74,12 @@ router.put('/:id',
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
 
-    const updates = {};
     const { name, password } = req.body;
-
-    if (name) updates.name = name;
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(password, salt);
-    }
 
     try {
       const user = await User.findOneAndUpdate(
         { id: req.params.id },
-        updates,
+        { name, password },
         { new: true }
       ).select('-password');
 
