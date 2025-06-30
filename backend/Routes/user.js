@@ -1,5 +1,6 @@
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const User = require('../models/User');
 
@@ -7,14 +8,16 @@ const User = require('../models/User');
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    res.status(400).json({ errors: errors.array() });
+    return true;
   }
+  return false;
 };
 
 // ✅ Get all users (No validation needed)
 router.get('/', async (req, res) => {
   try {
-    const users = await User.find().select('');
+    const users = await User.find().select('-password');
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -38,7 +41,7 @@ router.get('/:id',
   }
 );
 
-// ✅ Create new user
+// ✅ Create new user (with password hashing)
 router.post('/createuser',
   [
     body('name').notEmpty().withMessage('Name is required'),
@@ -50,21 +53,35 @@ router.post('/createuser',
 
     const { name, id, password } = req.body;
 
-    try {
-      let existing = await User.findOne({ id });
-      if (existing) return res.status(400).json({ error: 'User already exists' });
+   try {
+  // Check if all required fields are actually present
+  if (!name || !id || !password) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
-      const newUser = new User({ name, id, password });
-      await newUser.save();
+  // Check if user already exists
+  const existing = await User.findOne({ id });
+  if (existing) {
+    return res.status(400).json({ error: 'User already exists' });
+  }
 
-      res.status(201).json({ message: 'User created successfully' });
-    } catch (err) {
+  // 🔒 Hash the password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  // Create and save the user
+  const newUser = new User({ name, id, password: hashedPassword });
+  await newUser.save();
+
+  res.status(201).json({ message: 'User created successfully' });
+
+} catch (err) {
       res.status(500).json({ error: 'Server error' });
     }
   }
 );
 
-// ✅ Update user
+// ✅ Update user (with password hashing if password is provided)
 router.put('/:id',
   [
     param('id').isString().withMessage('ID must be a string'),
@@ -74,12 +91,19 @@ router.put('/:id',
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
 
+    const updates = {};
     const { name, password } = req.body;
+
+    if (name) updates.name = name;
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      updates.password = await bcrypt.hash(password, salt);
+    }
 
     try {
       const user = await User.findOneAndUpdate(
         { id: req.params.id },
-        { name, password },
+        updates,
         { new: true }
       ).select('-password');
 
