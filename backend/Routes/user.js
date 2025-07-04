@@ -49,7 +49,7 @@ router.post('/createuser',
   [
     body('name').notEmpty().withMessage('Name is required'),
     body('id').isAlphanumeric().withMessage('ID must be alphanumeric'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    body('password').isLength({ min: 4 }).withMessage('Password must be at least 6 characters')
   ],
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;

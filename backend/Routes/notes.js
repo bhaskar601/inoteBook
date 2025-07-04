@@ -1,9 +1,11 @@
-// routes/notes.js
 const express = require('express');
 const router = express.Router();
-// const Notes = require('../models/Notes');
+const { validationResult } = require('express-validator');
+const Note = require('../models/Notes2');
+const User =require('../models/User')
+const mid = require('../middleware/middle'); // Auth middleware
 
-// Utility function to handle validation errors
+// 🛠️ Utility function to handle validation errors
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -11,38 +13,49 @@ const handleValidationErrors = (req, res) => {
   }
 };
 
-// ✅ Create a new note
- 
-router.post('/', async (req, res) => {
+// ✅ Create a new note (requires login via token)
+router.post('/createnotes', mid, async (req, res) => {
   const { title, description } = req.body;
-   
 
   try {
-    const existingNote = await Notes.findOne({ description });
-    if (existingNote) return res.status(400).json({ error: 'Note with this description already exists' });
+    // ✅ Check if user exists
+    const existingUser = await User.findOne({id:req.user.id});
+    if (!existingUser) {
+      return res.status(404).json({ message: "User does not exist" });
+    }
 
-    const note = new Notes({ title, description });
+    // ✅ Save the note (no description restriction)
+    const note = new Note({
+      title,
+      description,
+      user: existingUser._id,
+    });
+    console.log(note);
     await note.save();
     res.status(201).json({ message: 'Note created successfully', note });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// ✅ Get all notes
-router.get('/', async (req, res) => {
+// ✅ Get all notes of the logged-in user
+router.get('/fetchall', mid, async (req, res) => {
   try {
-    const notes = await Notes.find();
+    // console.log('hello')
+    const notes = await Note.find({ user: req.user._id });
+    console.log(notes)
     res.json(notes);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// ✅ Get a single note by ID
-router.get('/:id', async (req, res) => {
+// ✅ Get a single note by ID (must be user's own note)
+router.get('/:id', mid, async (req, res) => {
   try {
-    const note = await Notes.findById(req.params.id);
+    const note = await Note.findOne({ _id: req.params.id, user: req.user.id });
     if (!note) return res.status(404).json({ error: 'Note not found' });
 
     res.json(note);
@@ -51,30 +64,30 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ✅ Update a note by ID
-router.put('/:id', async (req, res) => {
+// ✅ Update a note by ID (only if user owns it)
+router.put('/updated', mid, async (req, res) => {
   const { title, description } = req.body;
 
   try {
-    const updatedNote = await Notes.findByIdAndUpdate(
-      req.params.id,
+    const note = await Note.findOneAndUpdate(
+      { _id: req.params.id, user: req.user.id },
       { title, description },
       { new: true }
     );
 
-    if (!updatedNote) return res.status(404).json({ error: 'Note not found' });
+    if (!note) return res.status(404).json({ error: 'Note not found or not authorized' });
 
-    res.json({ message: 'Note updated successfully', note: updatedNote });
+    res.json({ message: 'Note updated successfully', note });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// ✅ Delete a note by ID
-router.delete('/:id', async (req, res) => {
+// ✅ Delete a note by ID (only if user owns it)
+router.delete('/:id', mid, async (req, res) => {
   try {
-    const deletedNote = await Notes.findByIdAndDelete(req.params.id);
-    if (!deletedNote) return res.status(404).json({ error: 'Note not found' });
+    const note = await Note.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    if (!note) return res.status(404).json({ error: 'Note not found or not authorized' });
 
     res.json({ message: 'Note deleted successfully' });
   } catch (err) {
