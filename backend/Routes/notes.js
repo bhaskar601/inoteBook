@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Note = require('../models/Notes2');
 const User =require('../models/User')
@@ -44,8 +45,10 @@ router.post('/createnotes', mid, async (req, res) => {
 router.get('/fetchall', mid, async (req, res) => {
   try {
     // console.log('hello')
-    const notes = await Note.find({ user: req.user._id });
-    console.log(notes)
+    const user = await User.find({ id: req.user.id });
+    const notes=await Note.find({user:user})
+
+    // console.log(notes);
     res.json(notes);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -53,46 +56,87 @@ router.get('/fetchall', mid, async (req, res) => {
 });
 
 // ✅ Get a single note by ID (must be user's own note)
-router.get('/:id', mid, async (req, res) => {
+
+
+router.put('/updatenote/:id', mid, async (req, res) => {
   try {
-    const note = await Note.findOne({ _id: req.params.id, user: req.user.id });
-    if (!note) return res.status(404).json({ error: 'Note not found' });
+    const { title, description } = req.body;
 
-    res.json(note);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+    // Validate note _id
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid Note ID' });
+    }
 
-// ✅ Update a note by ID (only if user owns it)
-router.put('/updated', mid, async (req, res) => {
-  const { title, description } = req.body;
+    console.log('Note ID:', req.params.id);
+    console.log('Custom User ID:', req.user.id);
 
-  try {
+    // Step 1: Find user by custom `id` field
+    const user = await User.findOne({ id: req.user.id });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Step 2: Use user's _id to update note
     const note = await Note.findOneAndUpdate(
-      { _id: req.params.id, user: req.user.id },
-      { title, description },
+      {
+        _id: req.params.id,
+        user: user._id  // ✅ match using MongoDB ObjectId
+      },
+      {
+        $set: { title, description },
+      },
       { new: true }
     );
 
-    if (!note) return res.status(404).json({ error: 'Note not found or not authorized' });
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found or unauthorized' });
+    }
 
     res.json({ message: 'Note updated successfully', note });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+
+  } catch (error) {
+    console.error('Update failed:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 // ✅ Delete a note by ID (only if user owns it)
-router.delete('/:id', mid, async (req, res) => {
+router.delete('/delete/:id', mid, async (req, res) => {
   try {
-    const note = await Note.findOneAndDelete({ _id: req.params.id, user: req.user.id });
-    if (!note) return res.status(404).json({ error: 'Note not found or not authorized' });
+    // ✅ Validate Note ID format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid Note ID' });
+    }
 
-    res.json({ message: 'Note deleted successfully' });
+    console.log("Note ID:", req.params.id);
+    console.log("Custom User ID:", req.user.id);
+
+    // ✅ Step 1: Find the user by custom ID
+    const user = await User.findOne({ id: req.user.id });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // ✅ Step 2: Delete the note if it belongs to the user
+    const note = await Note.findOneAndDelete({
+      _id: req.params.id,
+      user: user._id
+    });
+
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found or not authorized' });
+    }
+
+    res.json({ message: 'Note deleted successfully', deletedNote: note });
+
   } catch (err) {
+    console.error("Delete failed:", err);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 module.exports = router;
