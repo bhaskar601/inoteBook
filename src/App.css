@@ -36,3 +36,6 @@
     transform: rotate(360deg);
   }
 }
+.card-body:hover {
+  background-color: #f9f9f9;
+}

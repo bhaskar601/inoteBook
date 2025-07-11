@@ -1,8 +1,18 @@
-import React, { Component } from 'react';
-import { Link } from 'react-router-dom';
+// Navbar.js
 
-export default class Navbar extends Component {
+import React, { Component } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+
+// Functional wrapper to pass location as prop
+function NavbarWithLocation() {
+  const location = useLocation();
+  return <Navbar location={location} />;
+}
+
+class Navbar extends Component {
   render() {
+    const { location } = this.props;
+    
     return (
       <nav className="navbar navbar-expand-lg" style={{ background: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)' }}>
         <div className="container-fluid">
@@ -23,10 +33,10 @@ export default class Navbar extends Component {
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
               <li className="nav-item">
-                <Link className="nav-link active text-light" aria-current="page" to="/">Home</Link>
+                <Link className={`nav-link text-light ${location.pathname === '/' ? 'active fw-bold' : ''}`} to="/">Home</Link>
               </li>
               <li className="nav-item">
-                <Link className="nav-link text-light" to="/features">Features</Link>
+                <Link className={`nav-link text-light ${location.pathname === '/About' ? 'active fw-bold' : ''}`} to="/About">About</Link>
               </li>
 
               <li className="nav-item dropdown">
@@ -44,12 +54,7 @@ export default class Navbar extends Component {
                   <li><a className="dropdown-item" href="#">Action</a></li>
                   <li><a className="dropdown-item" href="#">Another action</a></li>
                   <li><hr className="dropdown-divider" /></li>
-                  <li><a className="dropdown-item" href="#">Something else here</a></li>
                 </ul>
-              </li>
-
-              <li className="nav-item">
-                <a className="nav-link text-secondary disabled" href="#">Disabled</a>
               </li>
             </ul>
 
@@ -68,3 +73,6 @@ export default class Navbar extends Component {
     );
   }
 }
+
+// Export the functional wrapper (with location)
+export default NavbarWithLocation;

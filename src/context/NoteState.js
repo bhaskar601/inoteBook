@@ -3,8 +3,8 @@ import NoteContext from './noteContext';
 
 export default function NoteState(props) {
   const [notes, setNotes] = useState([
-    { id: 1, title: 'First Note', description: 'This is your first note' },
-    { id: 2, title: 'Second Note', description: 'This is your second note' }
+    // { id: 1, title: 'First Note', description: 'This is your first note' },
+    // { id: 2, title: 'Second Note', description: 'This is your second note' }
   ]);
 
   // Add a note

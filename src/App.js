@@ -4,6 +4,7 @@ import Navbar from './component/navbar';
 import NoteStatee from './context/NoteState'; // corrected name
 import About from './component/About';      // example route component
 import Home from './component/Home';        // another route (create if not exist)
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 export default class App extends Component {
   render() {
