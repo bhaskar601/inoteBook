@@ -1,35 +1,67 @@
-import { useState } from 'react';
+// src/context/NoteState.js
+
+import { useState, useEffect } from 'react';
 import NoteContext from './noteContext';
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000/api/notes';
 
 export default function NoteState(props) {
-  const [notes, setNotes] = useState([
-    // { id: 1, title: 'First Note', description: 'This is your first note' },
-    // { id: 2, title: 'Second Note', description: 'This is your second note' }
-  ]);
+  const [notes, setNotes] = useState([]);
 
-  // Add a note
-  const addNote = (title, description) => {
-    const newNote = {
-      id: notes.length + 1,
-      title,
-      description
-    };
-    setNotes([...notes, newNote]);
+  // Get auth headers
+  const getAuthHeaders = () => ({
+    headers: {
+      'auth-token': localStorage.getItem('token')
+    }
+  });
+
+  // ✅ Fetch all notes from backend
+  const fetchNotes = async () => {
+    try {
+      const res = await axios.get(API_BASE, getAuthHeaders());
+      setNotes(res.data);
+    } catch (err) {
+      console.error('❌ Error fetching notes:', err);
+    }
   };
 
-  // Delete a note
-  const deleteNote = (id) => {
-    const filteredNotes = notes.filter(note => note.id !== id);
-    setNotes(filteredNotes);
+  // ✅ Add note to backend
+  const addNote = async (title, description) => {
+    try {
+      const res = await axios.post(API_BASE, { title, description }, getAuthHeaders());
+      setNotes(prevNotes => [...prevNotes, res.data]); // append new note
+    } catch (err) {
+      console.error('❌ Error adding note:', err);
+    }
   };
 
-  // Update a note (basic example)
-  const updateNote = (id, newTitle, newDescription) => {
-    const updated = notes.map(note =>
-      note.id === id ? { ...note, title: newTitle, description: newDescription } : note
-    );
-    setNotes(updated);
+  // ✅ Delete note from backend
+  const deleteNote = async (id) => {
+    try {
+      await axios.delete(`${API_BASE}/${id}`, getAuthHeaders());
+      setNotes(prevNotes => prevNotes.filter(note => note._id !== id));
+    } catch (err) {
+      console.error('❌ Error deleting note:', err);
+    }
   };
+
+  // ✅ Update note in backend
+  const updateNote = async (id, title, description) => {
+    try {
+      const res = await axios.put(`${API_BASE}/${id}`, { title, description }, getAuthHeaders());
+      setNotes(prevNotes =>
+        prevNotes.map(note => (note._id === id ? res.data : note))
+      );
+    } catch (err) {
+      console.error('❌ Error updating note:', err);
+    }
+  };
+
+  // ✅ Automatically fetch notes on mount
+  useEffect(() => {
+    fetchNotes();
+  }, []);
 
   return (
     <NoteContext.Provider value={{ notes, addNote, deleteNote, updateNote }}>
