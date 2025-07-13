@@ -1,66 +1,85 @@
-// src/context/NoteState.js
-
-import { useState, useEffect } from 'react';
-import NoteContext from './noteContext';
 import axios from 'axios';
-
-const API_BASE = 'http://localhost:5000/api/notes';
+import { useCallback, useEffect, useState } from 'react';
+import NoteContext from './noteContext';
 
 export default function NoteState(props) {
   const [notes, setNotes] = useState([]);
+  const [token, setToken] = useState(localStorage.getItem('token')); // 👈 track token
 
-  // Get auth headers
-  const getAuthHeaders = () => ({
-    headers: {
-      'auth-token': localStorage.getItem('token')
+  const getAuthHeaders = () => {
+    return {
+      headers: {
+        'auth-token': token,
+        'Content-Type': 'application/json'
+      }
+    };
+  };
+
+  const fetchNotes = useCallback(async () => {
+    if (!token) {
+      console.warn('⚠️ No token found. Skipping fetchNotes.');
+      return;
     }
-  });
-
-  // ✅ Fetch all notes from backend
-  const fetchNotes = async () => {
     try {
-      const res = await axios.get(API_BASE, getAuthHeaders());
+      const res = await axios.get('http://localhost:5000/api/notes/fetchall', getAuthHeaders());
       setNotes(res.data);
     } catch (err) {
-      console.error('❌ Error fetching notes:', err);
+      console.error('❌ Failed to fetch notes:', err.response?.data || err.message);
     }
-  };
+  }, [token]); // 👈 watch token
 
-  // ✅ Add note to backend
   const addNote = async (title, description) => {
     try {
-      const res = await axios.post(API_BASE, { title, description }, getAuthHeaders());
-      setNotes(prevNotes => [...prevNotes, res.data]); // append new note
+      const res = await axios.post(
+        'http://localhost:5000/api/notes/createnotes',
+        { title, description },
+        getAuthHeaders()
+      );
+      setNotes(prevNotes => [...prevNotes, res.data]);
     } catch (err) {
-      console.error('❌ Error adding note:', err);
+      console.error('❌ Failed to add note:', err.response?.data || err.message);
     }
   };
 
-  // ✅ Delete note from backend
-  const deleteNote = async (id) => {
+  const deleteNote = async (_id) => {
     try {
-      await axios.delete(`${API_BASE}/${id}`, getAuthHeaders());
-      setNotes(prevNotes => prevNotes.filter(note => note._id !== id));
+      await axios.delete(`http://localhost:5000/api/notes/delete/${_id}`, getAuthHeaders());
+      setNotes(prevNotes => prevNotes.filter(note => note._id !== _id));
     } catch (err) {
-      console.error('❌ Error deleting note:', err);
+      console.error('❌ Failed to delete note:', err.response?.data || err.message);
     }
   };
 
-  // ✅ Update note in backend
-  const updateNote = async (id, title, description) => {
+  const updateNote = async (_id, title, description) => {
     try {
-      const res = await axios.put(`${API_BASE}/${id}`, { title, description }, getAuthHeaders());
+      const res = await axios.put(
+        `http://localhost:5000/api/notes/updatenote/${_id}`,
+        { title, description },
+        getAuthHeaders()
+      );
       setNotes(prevNotes =>
-        prevNotes.map(note => (note._id === id ? res.data : note))
+        prevNotes.map(note => (note._id === _id ? res.data : note))
       );
     } catch (err) {
-      console.error('❌ Error updating note:', err);
+      console.error('❌ Failed to update note:', err.response?.data || err.message);
     }
   };
 
-  // ✅ Automatically fetch notes on mount
+  // ✅ Re-run when token changes
   useEffect(() => {
-    fetchNotes();
+    if (token) {
+      fetchNotes();
+    }
+  }, [token, fetchNotes]);
+
+  // ✅ Optional: Listen to storage change in other tabs
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setToken(localStorage.getItem('token'));
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return (

@@ -1,4 +1,5 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import NoteContext from '../context/noteContext';
 
 export default function Home() {
@@ -6,6 +7,15 @@ export default function Home() {
   const [newNote, setNewNote] = useState({ id: null, title: '', description: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     setNewNote({ ...newNote, [e.target.name]: e.target.value });
@@ -13,42 +23,40 @@ export default function Home() {
 
   const handleAddNote = (e) => {
     e.preventDefault();
-    if (isEditing) {
-      updateNote(newNote.id, newNote.title, newNote.description);
-      setIsEditing(false);
-    } else {
-      addNote(newNote.title, newNote.description);
-    }
+    addNote(newNote.title, newNote.description);
     setNewNote({ id: null, title: '', description: '' });
   };
 
   const handleEdit = (note) => {
-    setNewNote({ id: note.id, title: note.title, description: note.description });
+    setNewNote({ id: note._id, title: note.title, description: note.description });
     setIsEditing(true);
     setMenuOpenId(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowModal(true);
+  };
+
+  const handleUpdateNote = () => {
+    updateNote(newNote.id, newNote.title, newNote.description);
+    setIsEditing(false);
+    setNewNote({ id: null, title: '', description: '' });
+    setShowModal(false);
   };
 
   const handleDelete = (id) => {
-    const confirmed = window.confirm('Are you sure you want to delete this note?');
-    if (confirmed) {
+    if (window.confirm('Are you sure you want to delete this note?')) {
       deleteNote(id);
     }
     setMenuOpenId(null);
   };
 
-  // Pastel color palette
   const colors = ['#fde2e4', '#e2f0cb', '#b5ead7', '#c7ceea', '#ffdac1', '#e4c1f9'];
 
   return (
     <div
       className="container-fluid min-vh-100 py-5"
-      style={{
-        background: 'linear-gradient(to right, #fdfbfb, #ebedee)',
-      }}
+      style={{ background: 'linear-gradient(to right, #fdfbfb, #ebedee)' }}
     >
       <div className="container">
-        <h2 className="mb-4 text-center">{isEditing ? 'Update Note' : 'Add a Note'}</h2>
+        <h2 className="mb-4 text-center">Add a Note</h2>
 
         <form className="mb-5" onSubmit={handleAddNote}>
           <div className="mb-3">
@@ -77,28 +85,14 @@ export default function Home() {
               minLength={5}
             ></textarea>
           </div>
-          <button type="submit" className="btn btn-success shadow">
-            {isEditing ? 'Update Note' : 'Add Note'}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              className="btn btn-secondary ms-2 shadow"
-              onClick={() => {
-                setIsEditing(false);
-                setNewNote({ id: null, title: '', description: '' });
-              }}
-            >
-              Cancel
-            </button>
-          )}
+          <button type="submit" className="btn btn-success shadow">Add Note</button>
         </form>
 
         <h3 className="mb-3">Your Notes</h3>
         <div className="row">
           {notes.length === 0 && <p>No notes to display.</p>}
           {notes.map((note, index) => (
-            <div className="col-md-4 my-3" key={note.id}>
+            <div className="col-md-4 my-3" key={note._id}>
               <div
                 className="card shadow position-relative"
                 style={{
@@ -110,19 +104,17 @@ export default function Home() {
                   <h5 className="card-title">{note.title}</h5>
                   <p className="card-text">{note.description}</p>
 
-                  {/* Triple dot menu button */}
                   <div
                     className="position-absolute top-0 end-0 m-2"
                     style={{ cursor: 'pointer' }}
                     onClick={() =>
-                      setMenuOpenId(menuOpenId === note.id ? null : note.id)
+                      setMenuOpenId(menuOpenId === note._id ? null : note._id)
                     }
                   >
                     &#x22EE;
                   </div>
 
-                  {/* Dropdown menu */}
-                  {menuOpenId === note.id && (
+                  {menuOpenId === note._id && (
                     <div
                       className="position-absolute end-0 mt-2 p-2 bg-white border rounded shadow"
                       style={{ zIndex: 1000 }}
@@ -135,7 +127,7 @@ export default function Home() {
                       </button>
                       <button
                         className="btn btn-sm btn-danger w-100"
-                        onClick={() => handleDelete(note.id)}
+                        onClick={() => handleDelete(note._id)}
                       >
                         Delete
                       </button>
@@ -147,6 +139,59 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {showModal && (
+        <div
+          className="modal fade show"
+          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}
+          tabIndex="-1"
+        >
+          <div className="modal-dialog">
+            <div className="modal-content shadow">
+              <div className="modal-header">
+                <h5 className="modal-title">Update Note</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label htmlFor="modal-title" className="form-label">Title</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="modal-title"
+                    name="title"
+                    value={newNote.title}
+                    onChange={handleChange}
+                    required
+                    minLength={3}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="modal-description" className="form-label">Description</label>
+                  <textarea
+                    className="form-control"
+                    id="modal-description"
+                    name="description"
+                    value={newNote.description}
+                    onChange={handleChange}
+                    rows="3"
+                    required
+                    minLength={5}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleUpdateNote}>Update</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

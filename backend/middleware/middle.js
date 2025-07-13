@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = '123456789'; // You can move this to .env
 
 const mid = (req, res, next) => {
-  const token = req.header('user-token');
+  const token = req.header('auth-token');
   if (!token) return res.status(401).json({ error: 'Access Denied: No token provided' });
 
   try {

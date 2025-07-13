@@ -24,11 +24,11 @@ export default function About() {
         <div className="mt-4">
           <h4>Total Notes You have Created: {notes.length}</h4>
           <ul className="mt-3">
-            {notes.map((note) => (
+            {/* {notes.map((note) => (
               <li key={note.id}>
                 <strong>{note.title}</strong>: {note.description}
               </li>
-            ))}
+            ))} */}
           </ul>
         </div>
 

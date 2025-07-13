@@ -39,3 +39,21 @@
 .card-body:hover {
   background-color: #f9f9f9;
 }
+
+ /* body {
+  animation: gradientBG 15s ease infinite;
+  background: linear-gradient(-45deg, #2193b0, #6dd5ed, #00c9ff, #92fe9d);
+  background-size: 400% 400%;
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+} */
