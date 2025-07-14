@@ -1,16 +1,49 @@
-// Navbar.js
-
 import { Component } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 function NavbarWithLocation() {
   const location = useLocation();
-  return <Navbar location={location} />;
+  const navigate = useNavigate();
+
+  return <Navbar location={location} navigate={navigate} />;
 }
 
 class Navbar extends Component {
+handleLogout = async () => {
+  const confirmLogout = window.confirm('Are you sure you want to logout?');
+  if (!confirmLogout) return;
+
+  const token = localStorage.getItem('token');
+
+  try {
+    const response = await fetch('http://localhost:5000/api/user/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'auth-token': token,
+      },
+    });
+
+    if (response.ok) {
+      localStorage.removeItem('token');
+      window.dispatchEvent(new Event('storage'));
+      alert('🚪 Logged out successfully.');
+      this.props.navigate('/login'); // ✅ clearer flow
+    } else {
+      const resJson = await response.json();
+      alert(resJson.error || 'Logout failed');
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+    alert('Logout failed due to server error');
+  }
+};
+
+
+
   render() {
     const { location } = this.props;
+    const isLoggedIn = !!localStorage.getItem('token');
 
     return (
       <nav
@@ -35,12 +68,7 @@ class Navbar extends Component {
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
               <li className="nav-item">
-                {/* <Link
-                  className={`nav-link text-light ${location.pathname === '/Home' ? 'active fw-bold' : ''}`}
-                  to="/"
-                >
-                  Home
-                </Link> */}
+                {/* Add Home link if needed */}
               </li>
               <li className="nav-item">
                 <Link
@@ -52,10 +80,18 @@ class Navbar extends Component {
               </li>
             </ul>
 
-            {/* ✅ Login / Signup Buttons */}
+            {/* ✅ Login / Logout Buttons */}
             <div className="d-flex gap-2">
-              <Link className="btn btn-warning text-dark fw-semibold" to="/login">Login</Link>
-              <Link className="btn btn-warning text-dark fw-semibold" to="/register">Register</Link>
+              {isLoggedIn ? (
+                <button className="btn btn-danger fw-semibold" onClick={this.handleLogout}>
+                  Logout
+                </button>
+              ) : (
+                <>
+                  <Link className="btn btn-warning text-dark fw-semibold" to="/login">Login</Link>
+                  <Link className="btn btn-warning text-dark fw-semibold" to="/register">Register</Link>
+                </>
+              )}
             </div>
           </div>
         </div>

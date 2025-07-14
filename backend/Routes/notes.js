@@ -3,7 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
 const Note = require('../models/Notes2');
-const User =require('../models/User')
+const User =require('../models/User');
 const mid = require('../middleware/middle'); // Auth middleware
 
 // 🛠️ Utility function to handle validation errors

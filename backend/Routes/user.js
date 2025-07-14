@@ -1,55 +1,31 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { body, param, validationResult } = require('express-validator');
 const mid = require('../middleware/middle');
 
-const JWT_SECRET = '123456789'; // use .env for production
+const JWT_SECRET = '123456789'; // use .env in production
 
-// Utility function to handle validation errors
+// ✅ In-memory blacklist (clears on server restart)
+const tokenBlacklist = new Set();
+
+// 🔧 Error handler for validations
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
+  return false;
 };
 
-// ✅ Get all users (protected)
-router.get('/', mid, async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ✅ Get user by ID (protected)
-router.get('/:id',
-  mid,
-  param('id').isString().withMessage('ID must be a string'),
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-    try {
-      const user = await User.findOne({ id: req.params.id }).select('-password');
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      res.json(user);
-    } catch (err) {
-      res.status(500).json({ error: 'Server error' });
-    }
-  }
-);
-
-// ✅ Create new user (open route)
+// ✅ Create User
 router.post('/createuser',
   [
-    body('name').notEmpty().withMessage('Name is required'),
-    body('id').isAlphanumeric().withMessage('ID must be alphanumeric'),
-    body('password').isLength({ min: 4 }).withMessage('Password must be at least 6 characters')
+    body('name', 'Name is required').notEmpty(),
+    body('id', 'ID is required').notEmpty(),
+    body('password', 'Password must be at least 4 characters').isLength({ min: 4 }),
   ],
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
@@ -57,29 +33,28 @@ router.post('/createuser',
     const { name, id, password } = req.body;
 
     try {
-      let existing = await User.findOne({ id });
-      if (existing) return res.status(400).json({ error: 'User already exists' });
+      let user = await User.findOne({ id });
+      if (user) return res.status(400).json({ error: 'User already exists' });
 
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      const newUser = new User({ name, id, password: hashedPassword });
-      await newUser.save();
+      user = new User({ name, id, password: hashedPassword });
+      await user.save();
 
-      const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '1h' });
-
-      res.status(201).json({ message: 'User created successfully', token });
+      const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1h' });
+      res.json({ message: 'User created', token });
     } catch (err) {
       res.status(500).json({ error: 'Server error' });
     }
   }
 );
 
-// ✅ Login route
+// ✅ Login User
 router.post('/login',
   [
-    body('id').notEmpty().withMessage('ID is required'),
-    body('password').notEmpty().withMessage('Password is required')
+    body('id', 'ID is required').notEmpty(),
+    body('password', 'Password is required').notEmpty()
   ],
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
@@ -94,22 +69,69 @@ router.post('/login',
       if (!isMatch) return res.status(400).json({ error: 'Invalid ID or password' });
 
       const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '1h' });
-
       res.json({ message: 'Login successful', token });
     } catch (err) {
-      console.error(err);
       res.status(500).json({ error: 'Server error' });
     }
   }
 );
 
-// ✅ Update user (protected)
+// ✅ Logout User
+router.post('/logout', mid, (req, res) => {
+  const token = req.header('auth-token');
+  if (!token) return res.status(400).json({ error: 'No token provided' });
+
+  tokenBlacklist.add(token); // ⛔ block future access with this token
+  res.json({ message: 'User logged out successfully' });
+});
+
+// ✅ Get all users
+router.get('/', mid, async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// getuser
+router.get('/getuser', mid, async (req, res) => {
+  try {
+    const user = await User.findOne({ id: req.user.id }).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// ✅ Get single user by ID
+router.get('/:id',
+  mid,
+  param('id').notEmpty().withMessage('ID is required'),
+  async (req, res) => {
+    if (handleValidationErrors(req, res)) return;
+
+    try {
+      const user = await User.findOne({ id: req.params.id }).select('-password');
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      res.json(user);
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  }
+);
+
+// ✅ Update User
 router.put('/:id',
   mid,
   [
-    param('id').isString().withMessage('ID must be a string'),
-    body('name').optional().notEmpty().withMessage('Name must not be empty'),
-    body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    param('id').notEmpty().withMessage('ID is required'),
+    body('name').optional().notEmpty().withMessage('Name cannot be empty'),
+    body('password').optional().isLength({ min: 4 }).withMessage('Password must be at least 4 characters')
   ],
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
@@ -124,12 +146,7 @@ router.put('/:id',
     }
 
     try {
-      const user = await User.findOneAndUpdate(
-        { id: req.params.id },
-        updateData,
-        { new: true }
-      ).select('-password');
-
+      const user = await User.findOneAndUpdate({ id: req.params.id }, updateData, { new: true }).select('-password');
       if (!user) return res.status(404).json({ error: 'User not found' });
 
       res.json({ message: 'User updated', user });
@@ -139,22 +156,22 @@ router.put('/:id',
   }
 );
 
-// ✅ Delete user (protected)
+// ✅ Delete User
 router.delete('/:id',
   mid,
-  param('id').isString().withMessage('ID must be a string'),
+  param('id').notEmpty().withMessage('ID is required'),
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
 
     try {
-      const result = await User.findOneAndDelete({ id: req.params.id });
-      if (!result) return res.status(404).json({ error: 'User not found' });
+      const user = await User.findOneAndDelete({ id: req.params.id });
+      if (!user) return res.status(404).json({ error: 'User not found' });
 
-      res.json({ message: 'User deleted' });
+      res.json({ message: 'User deleted successfully' });
     } catch (err) {
       res.status(500).json({ error: 'Server error' });
     }
   }
 );
 
-module.exports = router;
+module.exports = { router, tokenBlacklist };

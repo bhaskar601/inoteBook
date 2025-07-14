@@ -4,19 +4,18 @@ import NoteContext from './noteContext';
 
 export default function NoteState(props) {
   const [notes, setNotes] = useState([]);
-  const [token, setToken] = useState(localStorage.getItem('token')); // 👈 track token
+  const [token, setToken] = useState(localStorage.getItem('token'));
 
-  const getAuthHeaders = () => {
-    return {
-      headers: {
-        'auth-token': token,
-        'Content-Type': 'application/json'
-      }
-    };
-  };
+  const getAuthHeaders = () => ({
+    headers: {
+      'auth-token': token,
+      'Content-Type': 'application/json'
+    }
+  });
 
   const fetchNotes = useCallback(async () => {
     if (!token) {
+      setNotes([]); // ✅ Clear notes if not logged in
       console.warn('⚠️ No token found. Skipping fetchNotes.');
       return;
     }
@@ -26,16 +25,16 @@ export default function NoteState(props) {
     } catch (err) {
       console.error('❌ Failed to fetch notes:', err.response?.data || err.message);
     }
-  }, [token]); // 👈 watch token
+  }, [token]);
 
   const addNote = async (title, description) => {
     try {
-      const res = await axios.post(
+      await axios.post(
         'http://localhost:5000/api/notes/createnotes',
         { title, description },
         getAuthHeaders()
       );
-      setNotes(prevNotes => [...prevNotes, res.data]);
+      await fetchNotes(); // ✅ Always fetch latest from backend
     } catch (err) {
       console.error('❌ Failed to add note:', err.response?.data || err.message);
     }
@@ -44,7 +43,7 @@ export default function NoteState(props) {
   const deleteNote = async (_id) => {
     try {
       await axios.delete(`http://localhost:5000/api/notes/delete/${_id}`, getAuthHeaders());
-      setNotes(prevNotes => prevNotes.filter(note => note._id !== _id));
+      await fetchNotes();
     } catch (err) {
       console.error('❌ Failed to delete note:', err.response?.data || err.message);
     }
@@ -52,30 +51,28 @@ export default function NoteState(props) {
 
   const updateNote = async (_id, title, description) => {
     try {
-      const res = await axios.put(
+      await axios.put(
         `http://localhost:5000/api/notes/updatenote/${_id}`,
         { title, description },
         getAuthHeaders()
       );
-      setNotes(prevNotes =>
-        prevNotes.map(note => (note._id === _id ? res.data : note))
-      );
+      await fetchNotes();
     } catch (err) {
       console.error('❌ Failed to update note:', err.response?.data || err.message);
     }
   };
 
-  // ✅ Re-run when token changes
+  // Fetch notes when token changes
   useEffect(() => {
-    if (token) {
-      fetchNotes();
-    }
+    fetchNotes();
   }, [token, fetchNotes]);
 
-  // ✅ Optional: Listen to storage change in other tabs
+  // Listen to token changes across tabs or during logout
   useEffect(() => {
     const handleStorageChange = () => {
-      setToken(localStorage.getItem('token'));
+      const newToken = localStorage.getItem('token');
+      setToken(newToken);
+      if (!newToken) setNotes([]); // ✅ Real-time logout handling
     };
 
     window.addEventListener('storage', handleStorageChange);

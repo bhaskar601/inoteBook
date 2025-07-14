@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import NoteContext from '../context/noteContext';
 
 export default function About() {
@@ -6,7 +6,7 @@ export default function About() {
 
   return (
     <div className="container my-5 text-light">
-      <div className="p-5 rounded shadow" style={{ background: 'linear-gradient(to right, #1f1c2c, #928dab)' }}>
+      <div className="p-5 rounded shadow" style={{ background: 'linear-gradient(to right, #1a1628ff, #275662ff)' }}>
         <h2 className="mb-4">About iNotebook 📝</h2>
         <p>
           <strong>iNotebook</strong> is a powerful note-taking app designed to keep your thoughts organized.
@@ -32,7 +32,7 @@ export default function About() {
           </ul>
         </div>
 
-        <p className="mt-4 fst-italic">Built with 💙 by Cheeku.</p>
+        <p className="mt-4 fst-italic">Built with 💙 by Cheeku</p>
       </div>
     </div>
   );
