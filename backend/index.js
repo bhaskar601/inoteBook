@@ -3,9 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
+require('dotenv').config(); // Load environment variables
+
 
 // ✅ MongoDB URI (keep it in .env in production)
-const MONGODB_URI = 'mongodb+srv://bhaskarsahu2605:QXFf8mmUgznWRLB6@inotebokk.ecundke.mongodb.net/inotebook?retryWrites=true&w=majority&appName=inotebokk';
+const MONGODB_URI = process.env.MONGODB_URI
 
 // ✅ Middleware
 app.use(cors()); // allow requests from frontend

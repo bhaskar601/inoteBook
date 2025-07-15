@@ -1,8 +1,8 @@
 // middleware/middle.js
-
+require('dotenv').config(); // Load environment variables
 const jwt = require('jsonwebtoken');
 const { tokenBlacklist } = require('../Routes/user'); // 👈 import the blacklist
-const JWT_SECRET = '123456789'; // You can move this to .env in production
+const JWT_SECRET = process.env.JWT_SECRET;// You can move this to .env in production
 
 const mid = (req, res, next) => {
   const token = req.header('auth-token');
@@ -20,7 +20,7 @@ const mid = (req, res, next) => {
     const data = jwt.verify(token, JWT_SECRET);
     req.user = data; // now you can access user id via req.user.id
     next();
-  } catch (err) {
+  } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
   }
 };

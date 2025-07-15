@@ -5,8 +5,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, param, validationResult } = require('express-validator');
 const mid = require('../middleware/middle');
+require('dotenv').config(); // Load environment variables
 
-const JWT_SECRET = '123456789'; // use .env in production
+const JWT_SECRET =  process.env.JWT_SECRET // use .env in production
 
 // ✅ In-memory blacklist (clears on server restart)
 const tokenBlacklist = new Set();
