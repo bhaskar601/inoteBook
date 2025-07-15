@@ -2,6 +2,7 @@
   "name": "inotebook",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:5000",  
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@testing-library/dom": "^10.4.0",
@@ -19,11 +20,12 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "react-scripts start",                       
+    "server": "nodemon ../backend/index.js",               
+    "both": "concurrently \"npm run start\" \"npm run server\"", 
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "both": "concurrently \"npm run start\" \"nodemon backend/index.js\" "
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
