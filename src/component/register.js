@@ -16,7 +16,7 @@ export default function Register() {
     setError('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/user/createuser', user);
+      const res = await axios.post('https://backend-inotebook.vercel.app//api/user/createuser', user);
       alert('🎉 Registration successful! Welcome to iNoteBook.');
       localStorage.setItem('token', res.data.token);
       navigate('/login');

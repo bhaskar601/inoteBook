@@ -20,7 +20,7 @@ export default function NoteState(props) {
       return;
     }
     try {
-      const res = await axios.get('http://localhost:5000/api/notes/fetchall', getAuthHeaders());
+      const res = await axios.get('https://backend-inotebook.vercel.app/api/notes/fetchall', getAuthHeaders());
       setNotes(res.data);
     } catch (err) {
       console.error('❌ Failed to fetch notes:', err.response?.data || err.message);
@@ -30,7 +30,7 @@ export default function NoteState(props) {
   const addNote = async (title, description) => {
     try {
       await axios.post(
-        'http://localhost:5000/api/notes/createnotes',
+        'https://backend-inotebook.vercel.app/api/notes/createnotes',
         { title, description },
         getAuthHeaders()
       );
@@ -42,7 +42,7 @@ export default function NoteState(props) {
 
   const deleteNote = async (_id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/notes/delete/${_id}`, getAuthHeaders());
+      await axios.delete(`https://backend-inotebook.vercel.app/api/notes/delete/${_id}`, getAuthHeaders());
       await fetchNotes();
     } catch (err) {
       console.error('❌ Failed to delete note:', err.response?.data || err.message);
@@ -52,7 +52,7 @@ export default function NoteState(props) {
   const updateNote = async (_id, title, description) => {
     try {
       await axios.put(
-        `http://localhost:5000/api/notes/updatenote/${_id}`,
+        `https://backend-inotebook.vercel.app/api/notes/updatenote/${_id}`,
         { title, description },
         getAuthHeaders()
       );
