@@ -21,7 +21,7 @@ export default function Home() {
 
     const fetchUser = async () => {
       try {
-        const res = await fetch('https://backend-inotebook.vercel.app/api/user/getuser', {
+        const res = await fetch('http://localhost:5000/api/user/getuser', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
